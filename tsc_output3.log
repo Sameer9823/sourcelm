@@ -1,0 +1,2 @@
+src/server/inngest/index.ts(63,24): error TS2339: Property 'skipped' does not exist on type 'JsonifyObject<{ skipped: boolean; chunkCount: number; }> | JsonifyObject<{ chunkCount: number; }>'.
+  Property 'skipped' does not exist on type 'JsonifyObject<{ chunkCount: number; }>'.

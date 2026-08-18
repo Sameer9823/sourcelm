@@ -1,0 +1,416 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String      @id
+  name          String
+  email         String
+  emailVerified Boolean     @default(false)
+  image         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  workspaces    Workspace[]
+
+  creditBalance      CreditBalance?
+  creditTransactions CreditTransaction[]
+  stripeCustomer     StripeCustomer?
+  subscription       Subscription?
+  reviewCards        ReviewCard[]
+  reviewLogs         ReviewLog[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+// ---------------------------------------------------------------------------
+// Credits & billing
+// ---------------------------------------------------------------------------
+
+/// Running credit balance per user. Updated transactionally alongside every
+/// CreditTransaction so `balance` never needs to be recomputed by summing history.
+model CreditBalance {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balance       Int      @default(0)
+  lifetimeSpent Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_balance")
+}
+
+enum CreditTransactionType {
+  SIGNUP_BONUS
+  PURCHASE
+  SUBSCRIPTION_GRANT
+  USAGE
+  REFUND
+  ADJUSTMENT
+}
+
+/// Immutable ledger of every credit grant/spend. `balanceAfter` is a point-in-time
+/// snapshot so the ledger can be audited without recomputation.
+model CreditTransaction {
+  id            String                 @id @default(cuid())
+  userId        String
+  type          CreditTransactionType
+  amount        Int
+  balanceAfter  Int
+  description   String
+  metadata      Json?
+  createdAt     DateTime               @default(now())
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("credit_transaction")
+}
+
+/// 1:1 link between our User and the Stripe Customer object.
+model StripeCustomer {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  stripeCustomerId String   @unique
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stripe_customer")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}
+
+/// Recurring monthly plan. One active subscription per user; renewal grants are
+/// driven by the `invoice.paid` Stripe webhook, not by this row's dates directly.
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  planId               String
+  status               SubscriptionStatus
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscription")
+}
+
+/// Idempotency guard so a Stripe webhook retry never double-grants credits.
+model ProcessedStripeEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+
+  @@map("processed_stripe_event")
+}
+
+// ---------------------------------------------------------------------------
+// Podcast (AI voice-agent audio overviews)
+// ---------------------------------------------------------------------------
+
+enum PodcastStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+/// A generated two-host "deep dive" podcast built from one, several, or all
+/// of a workspace's ready sources. `script` holds the full segment list
+/// (speaker, text, per-segment audio URL, estimated duration) once READY.
+model Podcast {
+  id          String        @id @default(cuid())
+  workspaceId String
+  title       String
+  sourceIds   String[]
+  status      PodcastStatus @default(PENDING)
+  script      Json?
+  durationSeconds Int?
+  errorMessage String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("podcast")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Workspace {
+  id            String         @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  icon          String?
+  defaultModel  String         @default("gpt-4o-mini")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources       Source[]
+  conversations Conversation[]
+  artifacts     LearningArtifact[]
+  podcasts      Podcast[]
+  reviewCards   ReviewCard[]
+
+  @@index([userId])
+  @@map("workspace")
+}
+
+enum SourceType {
+  PDF
+  WEBSITE
+  YOUTUBE
+  TEXT
+  MARKDOWN
+}
+
+enum SourceStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Source {
+  id          String       @id @default(cuid())
+  workspaceId String
+  type        SourceType
+  title       String
+  content     String?
+  url         String?
+  status      SourceStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks      SourceChunk[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, type])
+  @@index([workspaceId, status])
+  @@map("source")
+}
+
+model SourceChunk {
+  id         String   @id @default(cuid())
+  sourceId   String
+  index      Int
+  content    String
+  tokenCount Int?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, index])
+  @@index([sourceId])
+  @@map("source_chunk")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model Conversation {
+  id                   String    @id @default(cuid())
+  workspaceId          String
+  title                String?
+  summary              String?
+  summaryMessageCount  Int       @default(0)
+  summarizedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages             Message[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, updatedAt])
+  @@map("conversation")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  citations      Json?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("message")
+}
+
+enum ArtifactType {
+  SUMMARY
+  TAKEAWAYS
+  FLASHCARDS
+  QUIZ
+  MINDMAP
+  REPORT
+}
+
+enum ArtifactStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model LearningArtifact {
+  id          String         @id @default(cuid())
+  workspaceId String
+  type        ArtifactType
+  title       String
+  content     Json?
+  sourceIds   String[]
+  status      ArtifactStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reviewCards ReviewCard[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, type])
+  @@index([workspaceId, status])
+  @@map("learning_artifact")
+}
+
+// ---------------------------------------------------------------------------
+// Spaced-repetition review (the retention loop)
+// ---------------------------------------------------------------------------
+
+enum ReviewGrade {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+enum ReviewCardType {
+  FLASHCARD
+  QUIZ
+}
+
+/// One flashcard OR quiz question tracked with its own SM-2 scheduling state.
+/// Rows are created automatically whenever a FLASHCARDS or QUIZ artifact
+/// finishes generating, and live independently of the artifact afterward —
+/// reviewing a card never touches the artifact's `content` JSON.
+///
+/// FLASHCARD cards are self-graded (the learner picks Again/Hard/Good/Easy
+/// after recalling the answer). QUIZ cards are objectively graded: the
+/// learner picks one of `options`, correctness against `correctIndex` maps
+/// automatically to GOOD (correct) or AGAIN (incorrect).
+model ReviewCard {
+  id             String         @id @default(cuid())
+  userId         String
+  workspaceId    String
+  artifactId     String
+  cardIndex      Int
+  cardType       ReviewCardType @default(FLASHCARD)
+  front          String
+  back           String
+  options        String[]       @default([])
+  correctIndex   Int?
+  explanation    String?
+  easeFactor     Float          @default(2.5)
+  intervalDays   Int            @default(0)
+  repetitions    Int            @default(0)
+  dueAt          DateTime       @default(now())
+  lastReviewedAt DateTime?
+  lastGrade      ReviewGrade?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  artifact  LearningArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  logs      ReviewLog[]
+
+  @@unique([artifactId, cardIndex])
+  @@index([userId, dueAt])
+  @@map("review_card")
+}
+
+/// Append-only history of review submissions, used to compute the daily
+/// streak and "reviewed today" stats — the two numbers that make review a
+/// habit rather than a one-off task.
+model ReviewLog {
+  id         String      @id @default(cuid())
+  userId     String
+  cardId     String
+  grade      ReviewGrade
+  reviewedAt DateTime    @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card ReviewCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reviewedAt])
+  @@map("review_log")
+}

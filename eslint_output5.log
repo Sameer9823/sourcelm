@@ -1,0 +1,12 @@
+
+d:\kjk\hbhb\chaibook-next-final\features\chat\components\workspace-chat.tsx
+  153:38  warning  '_' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  162:22  warning  '_' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  169:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+  170:34  warning  '_' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  171:8   warning  React Hook useEffect has a missing dependency: 'setMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  190:34  warning  '_prev' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+
+✖ 6 problems (0 errors, 6 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

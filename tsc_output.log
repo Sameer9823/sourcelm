@@ -1,0 +1,3 @@
+src/server/inngest/index.ts(50,43): error TS2344: Type '{ chunkCount: number; skipped?: boolean | undefined; }' does not satisfy the constraint '(...args: any[]) => unknown'.
+  Type '{ chunkCount: number; skipped?: boolean | undefined; }' provides no match for the signature '(...args: any[]): unknown'.
+src/server/validators/chat.validator.ts(42,17): error TS2554: Expected 2-3 arguments, but got 1.

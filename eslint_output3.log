@@ -1,0 +1,45 @@
+
+d:\kjk\hbhb\chaibook-next-final\components\ui\carousel.tsx
+  104:25  error    React Hook "React.useRef" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function  react-hooks/rules-of-hooks
+  113:6   warning  React Hook React.useEffect has a missing dependency: 'onSelect'. Either include it or remove the dependency array                                       react-hooks/exhaustive-deps
+
+d:\kjk\hbhb\chaibook-next-final\features\chat\components\workspace-chat.tsx
+  152:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+d:\kjk\hbhb\chaibook-next-final\features\chat\components\workspace-chat.tsx:152:13
+  150 |         if (!conversationId) {
+  151 |             setMessages([]);
+> 152 |             setCitationsByMessageId({});
+      |             ^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  153 |             return;
+  154 |         }
+  155 |                                                                         react-hooks/set-state-in-effect
+  161:22  warning  'prev' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  168:34  warning  'prev' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  169:8   warning  React Hook useEffect has a missing dependency: 'setMessages'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  react-hooks/exhaustive-deps
+  187:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+d:\kjk\hbhb\chaibook-next-final\features\chat\components\workspace-chat.tsx:187:9
+  185 |
+  186 |         // Use functional update to avoid setState in effect lint warning
+> 187 |         setCitationsByMessageId((prev) => buildCitationMap(storedMessages));
+      |         ^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  188 |     }, [storedMessages, status]);
+  189 |
+  190 |     useEffect(() => {  react-hooks/set-state-in-effect
+  187:34  warning  'prev' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+
+✖ 8 problems (3 errors, 5 warnings)
+

@@ -1,0 +1,1 @@
+const fs = require("fs"); fs.writeFileSync("d:/kjk/hbhb/chaibook-next-final/test.txt", "hello");

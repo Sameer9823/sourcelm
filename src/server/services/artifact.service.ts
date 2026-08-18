@@ -1,0 +1,209 @@
+import type { Prisma } from "../../generated/prisma/client";
+import { enqueueArtifactGeneration } from "../lib/artifact-events";
+import {
+    createArtifactRecord,
+    deleteArtifactRecord,
+    findArtifactById,
+    findArtifactByIdAndWorkspaceId,
+    findArtifactsByWorkspaceId,
+    updateArtifactRecord,
+    type ArtifactRecord,
+} from "../repositories/artifact.repository";
+import { NotFoundError } from "../types/app-error";
+import {
+    gatherSourceContext,
+    generateArtifactContent,
+} from "./artifact-generation.service";
+import { getWorkspaceByIdForUser } from "./workspace.service";
+import { spendCredits } from "../lib/credits";
+import { syncReviewCardsFromArtifact } from "./review.service";
+import type { CreateArtifactInput } from "../validators/artifact.validator";
+
+/**
+ * Lists all learning artifacts in a workspace.
+ *
+ * @param workspaceId - Workspace to list artifacts from
+ * @param userId - Authenticated user's id
+ * @returns Artifact records ordered by creation time
+ *
+ */
+export async function listArtifactsForWorkspace(
+    workspaceId: string,
+    userId: string,
+) {
+    await getWorkspaceByIdForUser(workspaceId, userId);
+    return findArtifactsByWorkspaceId(workspaceId);
+}
+
+/**
+ * Loads a single artifact after verifying workspace ownership.
+ *
+ * @param workspaceId - Workspace the artifact belongs to
+ * @param artifactId - Artifact to fetch
+ * @param userId - Authenticated user's id
+ * @returns Artifact record with content when status is `READY`
+ * @throws {NotFoundError} When the artifact does not exist in this workspace
+ *
+ */
+export async function getArtifactForWorkspace(
+    workspaceId: string,
+    artifactId: string,
+    userId: string,
+) {
+    await getWorkspaceByIdForUser(workspaceId, userId);
+
+    const artifact = await findArtifactByIdAndWorkspaceId(
+        artifactId,
+        workspaceId,
+    );
+
+    if (!artifact) {
+        throw new NotFoundError("Artifact not found");
+    }
+
+    return artifact;
+}
+
+/**
+ * Creates a pending artifact and enqueues background generation via Inngest.
+ *
+ * Validates that ready sources exist before creating the row. The actual AI
+ * generation runs asynchronously in {@link processArtifactById}.
+ *
+ * @param workspaceId - Workspace to attach the artifact to
+ * @param userId - Authenticated user's id
+ * @param input - Artifact type, optional title, optional source id filter
+ * @returns New artifact with status `PENDING`
+ * @throws {ValidationError} When no ready sources are available
+ *
+ */
+export async function createArtifactForWorkspace(
+    workspaceId: string,
+    userId: string,
+    input: CreateArtifactInput,
+) {
+    await getWorkspaceByIdForUser(workspaceId, userId);
+    await spendCredits({
+        userId,
+        action: "ARTIFACT_GENERATE",
+        description: `Generated ${input.type.toLowerCase()} artifact`,
+    });
+
+    const context = await gatherSourceContext(
+        workspaceId,
+        input.sourceIds,
+    );
+
+    const artifact = await createArtifactRecord({
+        workspaceId,
+        type: input.type,
+        title:
+            input.title ||
+            `${
+                {
+                    SUMMARY: "Summary",
+                    TAKEAWAYS: "Key Takeaways",
+                    FLASHCARDS: "Flashcards",
+                    QUIZ: "Quiz",
+                    MINDMAP: "Mind Map",
+                    REPORT: "AI Report",
+                }[input.type]
+            } · ${new Date().toLocaleDateString()}`,
+        sourceIds: context.sourceIds,
+        status: "PENDING",
+    });
+
+    await enqueueArtifactGeneration({
+        artifactId: artifact.id,
+        workspaceId,
+    });
+
+    return artifact;
+}
+
+/**
+ * Deletes an artifact from the workspace.
+ *
+ * @param workspaceId - Workspace the artifact belongs to
+ * @param artifactId - Artifact to delete
+ * @param userId - Authenticated user's id
+ * @returns Resolves when the artifact row is deleted
+ * @throws {NotFoundError} When the artifact is not found
+ *
+ */
+export async function deleteArtifactForWorkspace(
+    workspaceId: string,
+    artifactId: string,
+    userId: string,
+) {
+    await getArtifactForWorkspace(workspaceId, artifactId, userId);
+    await deleteArtifactRecord(artifactId);
+}
+
+/**
+ * Runs the full artifact generation pipeline (used by Inngest worker).
+ *
+ * ```
+ * status: PROCESSING
+ *   → gatherSourceContext
+ *   → generateArtifactContent
+ *   → status: READY (or FAILED on error)
+ * ```
+ *
+ * @param artifactId - Artifact to generate content for
+ * @returns Updated artifact with `READY` status and generated content
+ * @throws When the artifact is missing or generation fails (status set to `FAILED`)
+ *
+ *
+ */
+export async function processArtifactById(artifactId: string) {
+    const artifact = await findArtifactById(artifactId);
+    if (!artifact) {
+        throw new Error("Artifact not found");
+    }
+
+    await updateArtifactRecord(artifactId, { status: "PROCESSING" });
+
+    try {
+        const context = await gatherSourceContext(
+            artifact.workspaceId,
+            artifact.sourceIds,
+        );
+
+        const content = await generateArtifactContent(
+            artifact.type,
+            context.text,
+        );
+
+        const ready = await updateArtifactRecord(artifactId, {
+            status: "READY",
+            content: content as Prisma.InputJsonValue,
+            metadata: {
+                generatedAt: new Date().toISOString(),
+                processingError: undefined,
+            },
+        });
+
+        // Flashcards immediately enter the spaced-repetition review queue —
+        // no extra step for the learner.
+        await syncReviewCardsFromArtifact(ready);
+
+        return ready;
+    } catch (error) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : "Artifact generation failed";
+
+        await updateArtifactRecord(artifactId, {
+            status: "FAILED",
+            metadata: {
+                processingError: message,
+            },
+        });
+
+        throw error;
+    }
+}
+
+export type { ArtifactRecord };

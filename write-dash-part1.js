@@ -1,0 +1,2 @@
+const fs = require("fs");
+const content = , ${greeting}; fs.writeFileSync("d:/kjk/hbhb/chaibook-next-final/features/workspaces/components/dashboard-home-new.tsx", content); console.log("Written:", content.length);
