@@ -17,7 +17,7 @@ export function CreateWorkspaceCard({
             type="button"
             onClick={onClick}
             className={cn(
-                "group flex min-h-[196px] flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-border/80 bg-card/50 p-6 text-center transition-all hover:border-primary/40 hover:bg-muted/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "group flex min-h-[196px] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/80 bg-card/50 p-6 text-center transition-all hover:border-primary/40 hover:bg-muted/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 className,
             )}
         >
@@ -25,7 +25,7 @@ export function CreateWorkspaceCard({
                 <PlusIcon className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
             </span>
             <div className="space-y-1">
-                <p className="font-medium">Create notebook</p>
+                <p className="font-medium">Create workspace</p>
                 <p className="text-xs text-muted-foreground">
                     Upload sources and start chatting
                 </p>

@@ -141,11 +141,11 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                             Welcome back, {greeting}
                         </p>
                         <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-                            Your notebooks
+                            Your knowledge workspace
                         </h1>
                         <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-                            Organize sources, chat with your materials, and
-                            generate learning tools — all in one workspace.
+                            Bring your sources together, explore what
+                            matters, and create something useful.
                         </p>
                     </div>
 
@@ -153,7 +153,7 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                         {FEATURES.map((feature) => (
                             <div
                                 key={feature.title}
-                                className="rounded-2xl border bg-card/70 p-4 shadow-sm"
+                                className="rounded-xl border bg-card/70 p-4 shadow-sm"
                             >
                                 <feature.icon className="mb-2 size-4 text-primary" />
                                 <p className="text-sm font-medium">
@@ -171,12 +171,12 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="font-heading text-xl font-semibold">
-                                Recent notebooks
+                                Recent workspaces
                             </h2>
                             <p className="text-sm text-muted-foreground">
                                 {workspaces?.length
-                                    ? `${workspaces.length} notebook${workspaces.length === 1 ? "" : "s"}`
-                                    : "Start with your first notebook"}
+                                    ? `${workspaces.length} workspace${workspaces.length === 1 ? "" : "s"}`
+                                    : "Start with your first workspace"}
                             </p>
                         </div>
 
@@ -187,8 +187,8 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                                 onChange={(event) =>
                                     setSearch(event.target.value)
                                 }
-                                placeholder="Search notebooks..."
-                                className="rounded-full bg-background pl-9"
+                                placeholder="Search workspaces..."
+                                className="rounded-lg bg-background pl-9"
                             />
                         </div>
                     </div>
@@ -198,15 +198,15 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                             {Array.from({ length: 6 }).map((_, index) => (
                                 <Skeleton
                                     key={index}
-                                    className="min-h-[196px] rounded-3xl"
+                                    className="min-h-[196px] rounded-xl"
                                 />
                             ))}
                         </div>
                     ) : error ? (
-                        <Empty className="rounded-3xl border bg-card">
+                        <Empty className="rounded-xl border bg-card">
                             <EmptyHeader>
                                 <EmptyTitle>
-                                    Could not load notebooks
+                                    Could not load workspaces
                                 </EmptyTitle>
                                 <EmptyDescription>
                                     {error instanceof ApiError
@@ -237,12 +237,12 @@ export function DashboardHome({ userName }: DashboardHomeProps) {
                     workspaces &&
                     workspaces.length > 0 &&
                     filteredWorkspaces.length === 0 ? (
-                        <Empty className="rounded-3xl border bg-card">
+                        <Empty className="rounded-xl border bg-card">
                             <EmptyHeader>
-                                <EmptyTitle>No notebooks found</EmptyTitle>
+                                <EmptyTitle>No workspaces found</EmptyTitle>
                                 <EmptyDescription>
                                     Try a different search term or create a new
-                                    notebook.
+                                    workspace.
                                 </EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent>

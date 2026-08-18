@@ -34,14 +34,14 @@ export function WorkspaceCard({
     return (
         <article
             className={cn(
-                "group/card relative min-h-[196px] overflow-hidden rounded-3xl shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                "group/card relative min-h-[196px] overflow-hidden rounded-xl shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
                 className,
             )}
         >
             <Link
                 href={href}
                 className={cn(
-                    "absolute inset-0 z-0 rounded-3xl bg-linear-to-br focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "absolute inset-0 z-0 rounded-xl bg-linear-to-br focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     gradient,
                 )}
                 aria-label={`Open ${workspace.title}`}

@@ -11,7 +11,6 @@ import {
     MessageSquareIcon,
     MicIcon,
     PlusIcon,
-    SearchIcon,
     SettingsIcon,
 } from "lucide-react";
 import { learnRoutes } from "@/features/learn";
@@ -39,28 +38,16 @@ import {
     SidebarRail,
     SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet";
 import { workspaceRoutes } from "../lib/routes";
 import type { Workspace } from "../lib/types";
 import { WorkspaceHeaderActions } from "./workspace-header-actions";
 import { SovyniqLogo } from "@/features/marketing/components/sovyniq-logo";
-import { CreditBadge } from "@/features/billing/components/credit-badge";
-import { ReviewStreakBadge } from "@/features/review/components/review-streak-badge";
-import { useIsMobile } from "@/shared/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 
 type WorkspaceShellProps = {
     workspace: Workspace;
     children: React.ReactNode;
 };
 
-// Navigation items configuration
 const NAVIGATION_ITEMS = [
     {
         key: "chat",
@@ -88,92 +75,49 @@ const NAVIGATION_ITEMS = [
     },
 ] as const;
 
-const BOTTOM_ITEMS = [
-    {
-        key: "settings",
-        label: "Settings",
-        icon: SettingsIcon,
-        href: (workspaceId: string) => workspaceRoutes.settings(workspaceId),
-    },
-    {
-        key: "help",
-        label: "Help",
-        icon: HelpCircleIcon,
-        href: "/docs",
-    },
-] as const;
-
 export function WorkspaceShell({ workspace, children }: WorkspaceShellProps) {
     const pathname = usePathname();
-    const isMobile = useIsMobile();
     const [addSourceOpen, setAddSourceOpen] = useState(false);
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-    // Determine active navigation
     const sourcesPath = sourceRoutes.list(workspace.id);
     const learnPath = learnRoutes.hub(workspace.id);
     const podcastPath = podcastRoutes.hub(workspace.id);
-    const chatPath = workspaceRoutes.detail(workspace.id);
     const settingsPath = workspaceRoutes.settings(workspace.id);
 
     const activeKey = (() => {
+        if (pathname.startsWith(settingsPath)) return "settings";
         if (pathname.startsWith(sourcesPath)) return "sources";
         if (pathname.startsWith(learnPath)) return "artifacts";
         if (pathname.startsWith(podcastPath)) return "podcast";
-        if (pathname.startsWith(settingsPath)) return "settings";
         return "chat";
     })();
 
-    const sidebarWidth = "w-[256px]"; // ~256px = 16rem
-
     return (
         <SidebarProvider>
-            {/* Mobile Sheet Overlay */}
-            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-                <SheetTrigger asChild>
-                    <SidebarTrigger className="lg:hidden" />
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] p-0">
-                    <SheetHeader className="p-4 border-b">
-                        <SheetTitle className="flex items-center gap-2">
-                            <SovyniqLogo size="md" showText={true} />
-                        </SheetTitle>
-                    </SheetHeader>
-                    <MobileSidebarContent
-                        workspace={workspace}
-                        activeKey={activeKey}
-                        onNavigate={() => setMobileSidebarOpen(false)}
-                    />
-                </SheetContent>
-            </Sheet>
-
-            {/* Desktop Sidebar */}
-            <Sidebar className={cn(sidebarWidth, "hidden lg:flex")}>
-            <Sidebar className="w-64">
-                {/* Sovyniq Brand Header */}
-                <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+            <Sidebar collapsible="offcanvas">
+                {/* Brand */}
+                <SidebarHeader className="gap-3 border-b border-sidebar-border px-3 py-3.5">
                     <Link
                         href={workspaceRoutes.list}
-                        className="flex items-center gap-2.5 font-heading text-lg font-semibold tracking-tight"
+                        className="flex items-center gap-2.5"
                     >
                         <SovyniqLogo size="md" showText={true} />
                     </Link>
-                </SidebarHeader>
 
-                <SidebarHeader className="border-b border-sidebar-border">
-                    <div className="flex items-center gap-2 px-2 py-1">
-                        <span className="text-xl">{workspace.icon ?? "📚"}</span>
+                    {/* Workspace selector (current workspace) */}
+                    <Link
+                        href={workspaceRoutes.list}
+                        className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-1.5 transition-colors hover:bg-sidebar-accent"
+                    >
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sm">
+                            {workspace.icon ?? "📚"}
+                        </span>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">
+                            <p className="truncate text-sm font-medium leading-tight">
                                 {workspace.title}
                             </p>
-                            {workspace.description ? (
-                                <p className="truncate text-xs text-muted-foreground">
-                                    {workspace.description}
-                                </p>
-                            ) : null}
                         </div>
-                    </div>
+                    </Link>
                 </SidebarHeader>
 
                 <SidebarContent>
@@ -181,69 +125,23 @@ export function WorkspaceShell({ workspace, children }: WorkspaceShellProps) {
                         <SidebarGroupLabel>Workspace</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton
-                                        isActive={isChatActive}
-                                        render={
-                                            <Link
-                                                href={workspaceRoutes.detail(
-                                                    workspace.id,
-                                                )}
-                                            />
-                                        }
-                                    >
-                                        <MessageSquareIcon />
-                                        <span>Chat</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton
-                                        isActive={isLearnActive}
-                                        render={
-                                            <Link href={learnPath} />
-                                        }
-                                    >
-                                        <GraduationCapIcon />
-                                        <span>Learn</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton
-                                        isActive={isPodcastActive}
-                                        render={
-                                            <Link href={podcastPath} />
-                                        }
-                                    >
-                                        <MicIcon />
-                                        <span>Podcast</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton
-                                        isActive={isSourcesActive}
-                                        render={
-                                            <Link href={sourcesPath} />
-                                        }
-                                    >
-                                        <BookOpenIcon />
-                                        <span>Sources</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton
-                                        isActive={isSettingsActive}
-                                        render={
-                                            <Link
-                                                href={workspaceRoutes.settings(
-                                                    workspace.id,
-                                                )}
-                                            />
-                                        }
-                                    >
-                                        <SettingsIcon />
-                                        <span>Settings</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
+                                {NAVIGATION_ITEMS.map((item) => (
+                                    <SidebarMenuItem key={item.key}>
+                                        <SidebarMenuButton
+                                            isActive={activeKey === item.key}
+                                            render={
+                                                <Link
+                                                    href={item.href(
+                                                        workspace.id,
+                                                    )}
+                                                />
+                                            }
+                                        >
+                                            <item.icon />
+                                            <span>{item.label}</span>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
@@ -254,7 +152,28 @@ export function WorkspaceShell({ workspace, children }: WorkspaceShellProps) {
                     />
                 </SidebarContent>
 
-                <SidebarFooter className="border-t border-sidebar-border">
+                <SidebarFooter className="gap-1 border-t border-sidebar-border">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                isActive={activeKey === "settings"}
+                                render={
+                                    <Link href={settingsPath} />
+                                }
+                            >
+                                <SettingsIcon />
+                                <span>Settings</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                render={<Link href="/docs" />}
+                            >
+                                <HelpCircleIcon />
+                                <span>Help</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
                     <Button
                         nativeButton={false}
                         variant="ghost"
@@ -270,10 +189,10 @@ export function WorkspaceShell({ workspace, children }: WorkspaceShellProps) {
             </Sidebar>
 
             <SidebarInset>
-                <header className="flex h-14 items-center gap-3 border-b px-4">
+                <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
                     <SidebarTrigger />
                     <div className="min-w-0 flex-1">
-                        <h1 className="truncate font-heading text-base font-semibold">
+                        <h1 className="truncate text-base font-semibold tracking-tight">
                             {workspace.title}
                         </h1>
                     </div>
